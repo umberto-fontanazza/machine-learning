@@ -12,7 +12,6 @@ def main():
         for line in file:
             tokens = line.split(' ')
             name, surname, nationality = tokens[0:3]
-            print(f'{name = }, {surname = }, {nationality = }')
             scores: list[float] = [float(token) for token in tokens[3:]]
             score = total_score(scores)
             athlete_scores.append((f'{name} {surname}', score))
@@ -23,9 +22,11 @@ def main():
     country_totals: list[tuple[str, float]] = [(nationality, score) for nationality, score in country_scores.items()]
     best_country, best_couhntry_score = max(country_totals, key= lambda tup: tup[1])
 
-    print(athlete_scores[:3])
-    print('Top country')
-    print(f'{best_country = }, {best_couhntry_score = }')
+    top_3 = athlete_scores[:3]
+    for i, (athlete, score) in enumerate(top_3, start=1):
+        print(f'{i} {athlete = }, {score =: .2}')
+    print('=====Top country=====')
+    print(f'{best_country = }, {best_couhntry_score = :.2}')
 
 if __name__ == '__main__':
     main()
