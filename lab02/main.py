@@ -60,7 +60,7 @@ def empyrical_covariance(ndarray: NDArray, strategy: Literal['fast','loop','@'] 
     if strategy == 'fast':
         return np.cov(ndarray)
     elif strategy == 'loop':
-        covariance = 0
+        covariance = np.zeros((ndarray.shape[0], ndarray.shape[0]))
         for sample in ndarray.T:
             sample = sample.reshape((sample.shape[0], 1))
             print(sample.shape, mean.shape)
@@ -70,19 +70,35 @@ def empyrical_covariance(ndarray: NDArray, strategy: Literal['fast','loop','@'] 
     elif strategy == '@':
         centered_data = ndarray - mean
         return centered_data @ centered_data.T / n
+    else:
+        raise ValueError(f'Invalid strategy {strategy}')
 
-def statistics(dataset: NDArray):
-    mean = dataset.mean(1).reshape(dataset.shape[0], 1)
-    centered_data = dataset - mean
-    print(dataset[:, :5])
-    print(centered_data[:, :5])
+def print_statistics(dataset: NDArray):
+    mean: NDArray = dataset.mean(1)
+    variance: NDArray = dataset.var(1)
+    standard_deviation: NDArray = dataset.std(1)
+    covariance_matrix: NDArray = empyrical_covariance(dataset)
+
+    print(f'Mean:               {mean}')
+    print(f'Variance:           {variance}')
+    print(f'Standard deviation: {standard_deviation}')
+    print(f'Covariance matrix:  {covariance_matrix}')
+
+def statistics(dataset: NDArray, labels):
+    print('Entire dataset:')
+    print_statistics(dataset)
+
+    for class_label, class_index in class_labels.items():
+        print(f'{class_label} [{class_index}]')
+        print_statistics(dataset[:, labels == class_index])
+        print()
 
 def main():
     np.set_printoptions(precision=1, sign=' ')
     dataset, labels = load()
     # visualize_single_attributes(dataset, labels)
     # visualize_scatter(dataset, labels)
-    # statistics(dataset)
+    statistics(dataset, labels)
 
 if __name__ == '__main__':
     main()
