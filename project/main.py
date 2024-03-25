@@ -1,6 +1,8 @@
 import numpy as np
 from csv import reader as csv_reader
 
+FEATURES_COUNT = 6
+
 def load(file_path: str):
     dataset = np.array([])
     labels = []
@@ -12,7 +14,7 @@ def load(file_path: str):
             dataset = np.concatenate((dataset, sample_ndarr))
             labels.append(class_label)
     labels = np.array(labels)
-    dataset = dataset.reshape((len(dataset) // 6, 6)).T
+    dataset = dataset.reshape((len(dataset) // FEATURES_COUNT, FEATURES_COUNT)).T
     return dataset, labels
 
 def main():
