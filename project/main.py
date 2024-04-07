@@ -32,7 +32,7 @@ def visualize_single_attributes(dataset, labels):
 def save_scatter(dataset, labels):
     attributes = (4, 5)
     x_index, y_index = attributes
-    plt.figure(label = f'Scatter attributes 4 and 5')
+    plt.figure(label = 'Scatter attributes 4 and 5')
     for label, label_name in enumerate(('counterfeit', 'legit')):
         plt.scatter(dataset[x_index, labels == label], dataset[y_index, labels == label], label = label_name)
     plt.xlabel('Attribute 4')
