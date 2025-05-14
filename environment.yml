@@ -13,16 +13,21 @@ dependencies:
   - libmpdec=4.0.0=h46256e1_0
   - libopenblas=0.3.29=h3f8574a_0
   - llvm-openmp=14.0.6=h0dcd299_0
+  - mypy=1.14.1=py313h46256e1_0
+  - mypy_extensions=1.0.0=py313hecd8cb5_0
   - ncurses=6.4=hcec6c5f_0
   - numpy=2.2.4=py313hc5c9681_0
   - numpy-base=2.2.4=py313h0dbffa8_0
   - openssl=3.0.16=h184c1cd_0
   - pip=25.1=pyh0d26453_1
+  - psutil=5.9.0=py313h46256e1_1
   - python=3.13.2=h1ec50cd_100_cp313
   - python_abi=3.13=0_cp313
   - readline=8.2=hca72f7f_0
   - sqlite=3.45.3=h6c40b1e_0
   - tk=8.6.14=h4d00af3_0
+  - typing-extensions=4.12.2=py313hecd8cb5_0
+  - typing_extensions=4.12.2=py313hecd8cb5_0
   - tzdata=2025b=h04d1e81_0
   - xz=5.6.4=h46256e1_1
   - zlib=1.2.13=h4b97444_1
