@@ -1,6 +1,6 @@
 from csv import reader
 from pprint import pprint
-from numpy import array, concatenate
+from numpy import array, concatenate, ndarray, cov
 from matplotlib import pyplot as plt
 from itertools import product
 
@@ -46,6 +46,14 @@ def feature_pairs_visualization(dataset, labels):
         plt.xlabel(feature_names[feature_1])
         plt.ylabel(feature_names[feature_2])
         plt.show()
+
+
+def stats(dataset: ndarray):
+    mean: ndarray = dataset.mean(1).reshape(dataset.shape[0], 1)
+    centered_data = dataset - mean
+    emp_covariance = centered_data @ centered_data.T / centered_data.shape[1]
+    print(emp_covariance)
+    # faster alternative print(cov(dataset, bias=True))
 
 
 def main():
