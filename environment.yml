@@ -11,6 +11,7 @@ dependencies:
   - expat=2.7.1=h6d0c2b6_0
   - fonttools=4.55.3=py313h46256e1_0
   - freetype=2.13.3=h02243ff_0
+  - joblib=1.4.2=py313hecd8cb5_0
   - jpeg=9e=h46256e1_3
   - kiwisolver=1.4.8=py313h6d0c2b6_0
   - lcms2=2.16=h31d93a5_1
@@ -45,8 +46,11 @@ dependencies:
   - python-dateutil=2.9.0post0=py313hecd8cb5_2
   - python_abi=3.13=0_cp313
   - readline=8.2=hca72f7f_0
+  - scikit-learn=1.6.1=py313h6d0c2b6_0
+  - scipy=1.15.2=py313h6117f4e_1
   - six=1.17.0=py313hecd8cb5_0
   - sqlite=3.45.3=h6c40b1e_0
+  - threadpoolctl=3.5.0=py313h653c010_0
   - tk=8.6.14=h4d00af3_0
   - tornado=6.4.2=py313h46256e1_0
   - typing-extensions=4.12.2=py313hecd8cb5_0
