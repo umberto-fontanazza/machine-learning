@@ -1,6 +1,5 @@
 from csv import reader
-from pprint import pprint
-from numpy import array, concatenate, ndarray, cov
+from numpy import array, concatenate, ndarray
 from matplotlib import pyplot as plt
 from itertools import product
 
