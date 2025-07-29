@@ -1,0 +1,13 @@
+[workspace]
+authors = ["Umberto Fontanazza <umberto.fontanazza@gmail.com>"]
+channels = ["conda-forge"]
+name = "machine-learning"
+platforms = ["osx-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.13.*"
+numpy = ">=2.3.2,<3"
+matplotlib = ">=3.10.3,<4"

@@ -1,2 +1,5 @@
 **/.DS_Store
 **/.mypy_cache
+# pixi environments
+.pixi/*
+!.pixi/config.toml
