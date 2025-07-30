@@ -1,5 +1,4 @@
-from numpy import bool, dtype, float64, int8, ndarray
+from numpy import bool, dtype, float64, ndarray, uint8
 
-type FloatMatrix = ndarray[tuple[int, int], dtype[float64]]
-type IntArray = ndarray[tuple[int], dtype[int8]]
+type F64Matrix = ndarray[tuple[int, int], dtype[float64]]
 type BoolArray = ndarray[tuple[int], dtype[bool]]
