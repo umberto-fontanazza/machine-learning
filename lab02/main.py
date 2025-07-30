@@ -1,9 +1,12 @@
-from numpy import array, float64, int8, cov, diagonal
-from pathlib import Path
-from matplotlib.pyplot import scatter, hist, figure, show, legend, xlabel, ylabel
 from csv import reader
 from itertools import product
-from ..lib.types import FloatMatrix, IntArray
+from pathlib import Path
+
+from matplotlib.pyplot import figure, hist, legend, scatter, show, xlabel, ylabel
+from numpy import array, cov, diagonal, dtype, float64, int8, ndarray
+
+type FloatMatrix = ndarray[tuple[int, int], dtype[float64]]
+type IntArray = ndarray[tuple[int], dtype[int8]]
 
 IRIS_LABELS: list[str] = ["Iris-setosa", "Iris-versicolor", "Iris-virginica"]
 IRIS_FEATURES: list[str] = [
