@@ -1,4 +1,4 @@
-from numpy import array, ndarray, dtype, float64, int8
+from numpy import array, ndarray, dtype, float64, int8, cov, diagonal
 from pathlib import Path
 from matplotlib.pyplot import scatter, hist, figure, show, legend, xlabel, ylabel
 from csv import reader
@@ -12,13 +12,13 @@ IRIS_FEATURES: list[str] = [
     "Petal width",
 ]
 
-type Data = ndarray[tuple[int, int], dtype[float64]]
+type FloatMatrix = ndarray[tuple[int, int], dtype[float64]]
 """n_features rows of n_samples columns"""
 
-type Target = ndarray[tuple[int], dtype[int8]]
+type IntArray = ndarray[tuple[int], dtype[int8]]
 
 
-def load_iris() -> tuple[Data, Target]:
+def load_iris() -> tuple[FloatMatrix, IntArray]:
     accumulator: list[float] = []
     labels: list[int] = []
     with open(Path("iris.csv"), "r") as csv_file:
@@ -33,7 +33,7 @@ def load_iris() -> tuple[Data, Target]:
     return data, target
 
 
-def plot_hist(data: Data, target: Target, feature: int):
+def plot_hist(data: FloatMatrix, target: IntArray, feature: int):
     assert feature in range(len(IRIS_FEATURES))
     figure()
     for t in range(len(IRIS_LABELS)):
@@ -42,7 +42,7 @@ def plot_hist(data: Data, target: Target, feature: int):
     show()
 
 
-def plot_scatter(data: Data, target: Target, x_feature: int, y_feature: int):
+def plot_scatter(data: FloatMatrix, target: IntArray, x_feature: int, y_feature: int):
     assert x_feature in range(data.shape[0])
     assert y_feature in range(data.shape[0])
     assert x_feature != y_feature
@@ -60,7 +60,7 @@ def plot_scatter(data: Data, target: Target, x_feature: int, y_feature: int):
     show()
 
 
-def visualize_dataset(data: Data, target: Target):
+def visualize_dataset(data: FloatMatrix, target: IntArray):
     for x_feature, y_feature in product(range(data.shape[0]), repeat=2):
         if x_feature == y_feature:
             plot_hist(data, target, x_feature)
@@ -68,9 +68,17 @@ def visualize_dataset(data: Data, target: Target):
             plot_scatter(data, target, x_feature, y_feature)
 
 
+def statistics(data: FloatMatrix, target: IntArray):
+    mean = data.mean(axis=1).reshape(data.shape[0], 1)
+    print("Mean: \n", mean)
+    covariance_m = cov(data, bias=True)
+    print("Covariance matrix: \n", covariance_m)
+    variance = diagonal(covariance_m).reshape(4, 1)
+    print("Variance: \n", variance)
+
+
 def main():
     data, target = load_iris()
-    visualize_dataset(data, target)
 
 
 if __name__ == "__main__":
