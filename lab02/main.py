@@ -1,8 +1,9 @@
-from numpy import array, ndarray, dtype, float64, int8, cov, diagonal
+from numpy import array, float64, int8, cov, diagonal
 from pathlib import Path
 from matplotlib.pyplot import scatter, hist, figure, show, legend, xlabel, ylabel
 from csv import reader
 from itertools import product
+from ..lib.types import FloatMatrix, IntArray
 
 IRIS_LABELS: list[str] = ["Iris-setosa", "Iris-versicolor", "Iris-virginica"]
 IRIS_FEATURES: list[str] = [
@@ -11,11 +12,6 @@ IRIS_FEATURES: list[str] = [
     "Petal length",
     "Petal width",
 ]
-
-type FloatMatrix = ndarray[tuple[int, int], dtype[float64]]
-"""n_features rows of n_samples columns"""
-
-type IntArray = ndarray[tuple[int], dtype[int8]]
 
 
 def load_iris() -> tuple[FloatMatrix, IntArray]:
