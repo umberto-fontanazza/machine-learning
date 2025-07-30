@@ -36,7 +36,7 @@ def plot_hist(data: FloatMatrix, target: IntArray, feature: int):
     assert feature in range(len(IRIS_FEATURES))
     figure()
     for t in range(len(IRIS_LABELS)):
-        hist(data[feature, target == t], density=True, label=IRIS_LABELS[t])
+        hist(data[feature, target == t], density=True, label=IRIS_LABELS[t], alpha=0.4)
     legend()
     show()
 
