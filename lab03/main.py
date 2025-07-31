@@ -16,6 +16,7 @@ def load() -> tuple[ndarray, ndarray]:
 
 
 def pca(data, m: int):
+    """Apply dimensionality reduction to the provided dataset reducing from data.shape[0] dimensions to m dimensions."""
     n = data.shape[0]
     if n <= m:
         raise ValueError(f"Dimensions cannot be reduced from {n} to {m}!")
