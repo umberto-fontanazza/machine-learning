@@ -6,3 +6,5 @@
 
 # python caches
 **/__pycache__/**/*
+
+**/solution/**
