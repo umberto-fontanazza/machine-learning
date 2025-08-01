@@ -1,8 +1,9 @@
 from functools import cache
+from pathlib import Path
 from typing import cast
 
 from matplotlib.pyplot import scatter, show
-from numpy import array, cov, dtype, float64, ndarray
+from numpy import array, cov, dtype, float64, load, ndarray
 from numpy.linalg import eigh as np_eigh
 from scipy.linalg import eigh as scipy_eigh
 from sklearn.datasets import load_iris
@@ -11,7 +12,7 @@ type F64Matrix = ndarray[tuple[int, int], dtype[float64]]
 
 
 @cache
-def load() -> tuple[ndarray, ndarray]:
+def load_data() -> tuple[ndarray, ndarray]:
     load_res = cast(dict[str, ndarray], load_iris())
     data, target = load_res["data"], load_res["target"]
     data = data.T.copy()
@@ -64,11 +65,13 @@ def lda(data: F64Matrix, target: ndarray, m: int):
     _, U = scipy_eigh(Sb, Sw)
     m = 2
     W = U[:, ::-1][:, :m]
+    # Check against professor's solution
+    # W_solution = load(Path(Path(__file__).parent, "solution", "IRIS_LDA_matrix_m2.npy"))
     return W
 
 
 def main():
-    data, target = load()
+    data, target = load_data()
 
 
 if __name__ == "__main__":
