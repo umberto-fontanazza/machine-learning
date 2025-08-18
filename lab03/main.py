@@ -1,17 +1,15 @@
-from functools import cache
-from pathlib import Path
 from typing import cast
 
 from matplotlib.pyplot import scatter, show
-from numpy import array, cov, dtype, float64, load, ndarray
+from numpy import array, cov, dtype, float64, ndarray
 from numpy.linalg import eigh as np_eigh
+from numpy.random import permutation, seed
 from scipy.linalg import eigh as scipy_eigh
 from sklearn.datasets import load_iris
 
 type F64Matrix = ndarray[tuple[int, int], dtype[float64]]
 
 
-@cache
 def load_data() -> tuple[ndarray, ndarray]:
     load_res = cast(dict[str, ndarray], load_iris())
     data, target = load_res["data"], load_res["target"]
@@ -70,8 +68,21 @@ def lda(data: F64Matrix, target: ndarray, m: int):
     return W
 
 
+def split_train_test(
+    data: F64Matrix, target: ndarray
+) -> tuple[F64Matrix, ndarray, F64Matrix, ndarray]:
+    train_count = int(data.shape[1] * 2 / 3)
+    seed(0)
+    idx = permutation(data.shape[1])
+    train_idx, test_idx = idx[:train_count], idx[train_count:]
+    train_data, train_target = data[:, train_idx], target[train_idx]
+    test_data, test_target = data[:, test_idx], target[test_idx]
+    return train_data, train_target, test_data, test_target
+
+
 def main():
     data, target = load_data()
+    train_data, train_target, test_data, test_target = split_train_test(data, target)
 
 
 if __name__ == "__main__":
