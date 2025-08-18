@@ -1,7 +1,7 @@
 from typing import cast
 
 from matplotlib.pyplot import scatter, show
-from numpy import array, cov, dtype, float64, ndarray
+from numpy import array, average, cov, dtype, float64, ndarray, stack, unique
 from numpy.linalg import eigh as np_eigh
 from numpy.random import permutation, seed
 from scipy.linalg import eigh as scipy_eigh
@@ -39,21 +39,21 @@ def pca_example(data, target):
 
 def get_bw_cov(data: F64Matrix, target: ndarray) -> tuple[F64Matrix, F64Matrix]:
     """Returns between and within class covariance matrices. The two summed equal the empyrical covariance for the dataset."""
-    # between class covariance
     mu = data.mean(axis=1).reshape(data.shape[0], 1)
-    per_class_mean = [data[:, cls == target].mean(axis=1) for cls in range(3)]
-    per_class_mean = [arr.reshape(data.shape[0], 1) for arr in per_class_mean]
-    per_class_Sb = [(x - mu) @ (x - mu).T for x in per_class_mean]
-    for elem in per_class_Sb:
-        assert elem.shape == (data.shape[0], data.shape[0])
-    Sb = array(per_class_Sb, dtype=float64).mean(axis=0)
+    unique_targets, samples_per_target = unique(target, return_counts=True)
+
+    # between class covariance
+    per_class_mean = [data[:, target == t].mean(axis=1) for t in unique_targets]
+    per_class_mean = [mu_c.reshape(data.shape[0], 1) for mu_c in per_class_mean]
+    per_class_sb = [(mu_c - mu) @ (mu_c - mu).T for mu_c in per_class_mean]
+    per_class_sb = stack(per_class_sb)
+    Sb = average(per_class_sb, axis=0, weights=samples_per_target)
 
     # within class covariance
-    per_class_cov = [
-        cov(data[:, cls == target], dtype=float64, bias=True) for cls in range(3)
-    ]
-    Sw = array(per_class_cov, dtype=float64).mean(axis=0)
-    assert Sw.shape == (4, 4)
+    per_class_cov = stack(
+        [cov(data[:, target == t], dtype=float64, bias=True) for t in unique_targets]
+    )
+    Sw = average(per_class_cov, axis=0, weights=samples_per_target)
     return Sb, Sw
 
 
