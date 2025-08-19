@@ -1,13 +1,29 @@
 from typing import cast
 
-from matplotlib.pyplot import scatter, show
-from numpy import array, average, cov, dtype, float64, ndarray, stack, unique
+from matplotlib.pyplot import hist, legend, scatter, show
+from numpy import (
+    array,
+    average,
+    cov,
+    dtype,
+    float64,
+    full,
+    ndarray,
+    stack,
+    uint8,
+    unique,
+    zeros,
+)
 from numpy.linalg import eigh as np_eigh
 from numpy.random import permutation, seed
 from scipy.linalg import eigh as scipy_eigh
 from sklearn.datasets import load_iris
 
 type F64Matrix = ndarray[tuple[int, int], dtype[float64]]
+type F64Array = ndarray[tuple[int], dtype[float64]]
+type U8Array = ndarray[tuple[int], dtype[uint8]]
+
+IRIS_LABELS: list[str] = ["Iris-setosa", "Iris-versicolor", "Iris-virginica"]
 
 
 def load_data() -> tuple[ndarray, ndarray]:
@@ -17,24 +33,15 @@ def load_data() -> tuple[ndarray, ndarray]:
     return data, target
 
 
-def pca(data, m: int):
-    """Apply dimensionality reduction to the provided dataset reducing from data.shape[0] dimensions to m dimensions."""
+def pca(data: F64Matrix, m: int):
+    """Computes PCA projection matrix P from the data and the desired number of dimensions m to be kept"""
     n = data.shape[0]
     if n <= m:
         raise ValueError(f"Dimensions cannot be reduced from {n} to {m}!")
     empirical_cov = cov(data, bias=True)
     _, U = np_eigh(empirical_cov)
     P = U[:, ::-1][:, :m]
-    return P.T @ data  # projected_data
-
-
-def pca_example(data, target):
-    projected_data = pca(data, 2)
-    assert projected_data.shape[0] == 2
-    assert projected_data.shape[1] == 150
-    for cls in range(3):
-        scatter(projected_data[0, target == cls], projected_data[1, target == cls])
-    show()
+    return P
 
 
 def get_bw_cov(data: F64Matrix, target: ndarray) -> tuple[F64Matrix, F64Matrix]:
@@ -58,13 +65,12 @@ def get_bw_cov(data: F64Matrix, target: ndarray) -> tuple[F64Matrix, F64Matrix]:
 
 
 def lda(data: F64Matrix, target: ndarray, m: int):
-    assert m <= max(target)
+    """Returns LDA projection matrix W given m: the number of directions to be kept"""
+    unique_targets = unique(target)
+    assert m <= unique_targets.shape[0]
     Sb, Sw = get_bw_cov(data, target)
     _, U = scipy_eigh(Sb, Sw)
-    m = 2
     W = U[:, ::-1][:, :m]
-    # Check against professor's solution
-    # W_solution = load(Path(Path(__file__).parent, "solution", "IRIS_LDA_matrix_m2.npy"))
     return W
 
 
@@ -80,10 +86,70 @@ def split_train_test(
     return train_data, train_target, test_data, test_target
 
 
-def main():
+def get_euclidean_threshold(data: F64Array, target: U8Array) -> float64:
+    """WARNING: works for binary classification with one dimensional data."""
+    assert data.shape[0] == data.size
+    assert len(data.shape) == 1
+    unique_targets = unique(target)
+    assert unique_targets.size == 2
+
+    return stack([data[target == t].mean() for t in unique_targets]).mean()
+
+
+def euclidean_error_rate(
+    data: F64Array, threshold: float64, ground_truth: U8Array
+) -> float64:
+    """WARNING: works for binary classification with one dimensional data."""
+    assert data.shape[0] == data.size
+    assert len(data.shape) == 1
+    unique_targets = unique(ground_truth)
+    assert unique_targets.size == 2
+
+    predictions = full(data.shape, min(unique_targets), dtype=uint8)
+    predictions[data > threshold] = max(unique_targets)
+    return (predictions != ground_truth).sum() / ground_truth.size
+
+
+def pca_lda_comparison():
     data, target = load_data()
+    # removing iris setosa samples
+    data = data[:, target != 0]
+    target = target[target != 0]
     train_data, train_target, test_data, test_target = split_train_test(data, target)
+
+    # compute error rate for LDA only
+    W = lda(train_data, train_target, m=1)
+    projected_train_data = (W.T @ train_data).flatten()
+    projected_test_data = (W.T @ test_data).flatten()
+    threshold = get_euclidean_threshold(projected_train_data, train_target)
+    err_rate = euclidean_error_rate(projected_test_data, threshold, test_target)
+    print(f"LDA error rate: {err_rate:.4f}")
+
+    # error rate for PCA only
+    P = -pca(train_data, 1)  # sign matters
+    projected_train_data = (P.T @ train_data).flatten()
+    projected_test_data = (P.T @ test_data).flatten()
+    threshold = get_euclidean_threshold(projected_train_data, train_target)
+    err_rate = euclidean_error_rate(projected_test_data, threshold, test_target)
+    print(f"PCA error rate: {err_rate:.4f}")
+
+    # error rate for PCA + LDA
+    P = -pca(train_data, 3)
+    projected_train_data = P.T @ train_data
+    W = lda(projected_train_data, train_target, 1)
+    projected_train_data = (W.T @ projected_train_data).flatten()
+    threshold = get_euclidean_threshold(projected_train_data, train_target)
+    projected_test_data = (W.T @ P.T @ test_data).flatten()
+    err_rate = euclidean_error_rate(projected_test_data, threshold, test_target)
+    print(f"PCA3 + LDA error rate: {err_rate:.4f}")
+
+
+def main():
+    pca_lda_comparison()
 
 
 if __name__ == "__main__":
     main()
+    # a = array([1, 2, 2, 3])
+    # u = unique(a)
+    # print(u)
