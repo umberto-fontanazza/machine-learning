@@ -12,7 +12,7 @@ def get_lda_lt(data: F64Matrix, target: U8Array, m: int) -> F64Matrix:
     mu = data.mean(axis=1).reshape(data.shape[0], 1)
 
     # compute Sb
-    cls_means = [data[:, target == t] for t in unique_targets]
+    cls_means = [data[:, target == t].mean(axis=1) for t in unique_targets]
     cls_means = [mu_c.reshape(data.shape[0], 1) for mu_c in cls_means]
     Sb = average(
         stack([(mu_c - mu) @ (mu_c - mu).T for mu_c in cls_means]),
