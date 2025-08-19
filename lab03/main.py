@@ -150,6 +150,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # a = array([1, 2, 2, 3])
-    # u = unique(a)
-    # print(u)
