@@ -15,6 +15,8 @@ class PCA_LDA_euclid_binary:
         self.P = get_pca_lt(data, pca_m)
         data = self.P.T @ data
         self.W = get_lda_lt(data, target, 1)
+        # TODO: this simple fix works for this dataset, we want the mean of class 1 to be on the right of the mean of class 0.
+        # A more general and flexible approach should be replaced here
         if pca_m == 2:
             self.W = -self.W
         projected_data = (self.W.T @ data).flatten()
@@ -26,7 +28,6 @@ class PCA_LDA_euclid_binary:
         """Returns an array with inferred classes or the error rate if the ground_truth is provided"""
         data = self.P.T @ data
         data = self.W.T @ data
-        # check mean of class one is right of mean of class 0
         predicted = euclid_classify(data.flatten(), self.threshold, self.unique_targets)
         if ground_truth is None:
             return predicted
