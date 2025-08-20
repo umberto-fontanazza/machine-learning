@@ -2,10 +2,18 @@ from itertools import product
 from typing import Literal
 
 from matplotlib.pyplot import figure, hist, legend, scatter, show, title, xlabel, ylabel
+from numpy import unique
 
-from .types import BoolArray, F64Matrix
+from .types import BoolArray, F64Array, F64Matrix, U8Array
 
 LABELS = ["counterfeit", "genuine"]
+
+
+def plot_hist_u8(data: F64Array, target: U8Array):
+    for t in unique(target):
+        hist(data[target == t], alpha=0.4, label=f"{t}")
+    legend()
+    show()
 
 
 def plot_hist(data: F64Matrix, target: BoolArray, feature: int):
