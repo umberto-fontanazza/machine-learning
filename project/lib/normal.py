@@ -1,11 +1,11 @@
-from numpy import log, pi
+from numpy import exp, log, pi
 from numpy.linalg import inv, slogdet
 
 from .types import F64Array, F64Matrix
 
 
-def log_density_normal(
-    data: F64Matrix, mean: F64Array, covariance: F64Matrix
+def log_normal_density(
+    data: F64Matrix, mean: F64Matrix, covariance: F64Matrix
 ) -> F64Array:
     """Returns the log of the probability density function of the normal distribution identified by the parameters."""
     for x in [data, mean, covariance]:
@@ -20,3 +20,7 @@ def log_density_normal(
         + slogdet(covariance)[1]
         + ((data_centered.T @ inv(covariance)).T * data_centered).sum(axis=0)
     )
+
+
+def normal_density(data: F64Matrix, mean: F64Matrix, covariance: F64Matrix) -> F64Array:
+    return exp(log_normal_density(data, mean, covariance))
