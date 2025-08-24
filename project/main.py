@@ -63,7 +63,7 @@ def univariate_fit(data: F64Matrix, target: U8Array):
                 alpha=0.4,
                 color=cls_color[t],
             )
-            plot(x.ravel(), y, alpha=0.4, color=cls_color[t])
+            plot(x.flatten(), y, alpha=0.4, color=cls_color[t])
             title(f"Feature {feature}")
         show()
 
