@@ -27,6 +27,15 @@ type F64Array = ndarray[tuple[int], dtype[float64]]
 type U8Array = ndarray[tuple[int], dtype[uint8]]
 
 
+def load_data(binary=False) -> tuple[F64Matrix, U8Array, F64Matrix, U8Array]:
+    load_res = cast(dict[str, ndarray], load_iris())
+    data, target = load_res["data"].T, load_res["target"]
+    if binary:
+        data = data[:, target != 0]
+        target = target[target != 0]
+    return split_train_test(data, target)
+
+
 def split_train_test(
     data: F64Matrix, target: U8Array
 ) -> tuple[F64Matrix, U8Array, F64Matrix, U8Array]:
@@ -56,11 +65,9 @@ def normal_density(data: F64Matrix, mean: F64Matrix, covariance: F64Matrix) -> F
 
 
 def mvg_classifier():
-    load_res = cast(dict[str, ndarray], load_iris())
-    data, target = load_res["data"].T, load_res["target"]
-    unique_targets = unique(target)
-    n_dim, n_cls = data.shape[0], len(unique_targets)
-    train_data, train_target, test_data, test_target = split_train_test(data, target)
+    train_data, train_target, test_data, test_target = load_data()
+    unique_targets = unique(train_target)
+    n_dim, n_cls = train_target.shape[0], len(unique_targets)
 
     cls_means: list[F64Matrix] = [
         train_data[:, train_target == t].mean(axis=1).reshape(n_dim, 1)
@@ -86,11 +93,9 @@ def mvg_classifier():
 
 
 def mvg_log_classifier(naive=False, tied_cov=False):
-    load_res = cast(dict[str, ndarray], load_iris())
-    data, target = load_res["data"].T, load_res["target"]
-    unique_targets = unique(target)
-    n_dim, n_cls = data.shape[0], len(unique_targets)
-    train_data, train_target, test_data, test_target = split_train_test(data, target)
+    train_data, train_target, test_data, test_target = load_data()
+    unique_targets = unique(train_target)
+    n_dim, n_cls = train_data.shape[0], len(unique_targets)
 
     cls_means = [
         train_data[:, train_target == t].mean(axis=1).reshape(-1, 1)
