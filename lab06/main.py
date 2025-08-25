@@ -128,12 +128,17 @@ def mvg_log_classifier(naive=False, tied_cov=False):
     )
     log_posterior = log_joint - log_marginal
     posterior = exp(log_posterior)
-    predicted = posterior.argmax(axis=0)
+    predicted = posterior.argmax(
+        axis=0
+    )  # TODO: fix for when classes don't start from 0
     err_rate = (predicted != test_target).sum() / test_target.size
     print(f"{err_rate=}")
 
 
 def main():
+    train_data, train_target, test_data, test_target = load_data(binary=True)
+    unique_targets = unique(train_target)
+    print(unique_targets)
     pass
 
 
