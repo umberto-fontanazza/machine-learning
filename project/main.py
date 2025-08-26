@@ -2,6 +2,7 @@ from pathlib import Path
 
 from lib import load_from_csv
 from lib.model import PCA_LDA_euclid_binary
+from lib.mvg import Mvg
 from lib.normal import normal_density
 from lib.types import F64Matrix, U8Array
 from matplotlib.pyplot import hist, plot, show, title
@@ -68,10 +69,22 @@ def univariate_fit(data: F64Matrix, target: U8Array):
         show()
 
 
+def mvg_comaprison(data, target):
+    train_data, train_target, test_data, test_target = split_train_test(data, target)
+    mvg = Mvg(train_data, train_target)
+    mvg_tied = Mvg(train_data, train_target, tied=True)
+    mvg_naive = Mvg(train_data, train_target, naive=True)
+    erate_mvg = mvg.inference(test_data, test_target)
+    erate_mvg_tied = mvg_tied.inference(test_data, test_target)
+    erate_mvg_naive = mvg_naive.inference(test_data, test_target)
+    print(f"{erate_mvg}")
+    print(f"{erate_mvg_tied}")
+    print(f"{erate_mvg_naive}")
+
+
 def main():
     data, target = load_from_csv(Path(Path(__file__).parent, "train-data.csv"))
     target = target.astype(uint8)
-    univariate_fit(data, target)
 
 
 if __name__ == "__main__":

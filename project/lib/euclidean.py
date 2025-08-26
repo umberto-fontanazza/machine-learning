@@ -1,6 +1,5 @@
 from numpy import float64, full, stack, uint8, unique
 
-from .plot import plot_hist_u8
 from .types import F64Array, U8Array
 
 
