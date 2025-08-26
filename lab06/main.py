@@ -135,11 +135,38 @@ def mvg_log_classifier(naive=False, tied_cov=False):
     print(f"{err_rate=}")
 
 
-def main():
+def mvg_binary_log_classifier(tied=False):
     train_data, train_target, test_data, test_target = load_data(binary=True)
-    unique_targets = unique(train_target)
-    print(unique_targets)
-    pass
+    unique_targets, cls_weight = unique(train_target, return_counts=True)
+    n_dim, n_cls = train_data.shape[0], len(unique_targets)
+
+    cls_means = [
+        train_data[:, train_target == t].mean(axis=1).reshape(-1, 1)
+        for t in unique_targets
+    ]
+    cls_covs = [
+        cov(train_data[:, train_target == t], bias=True, dtype=float64)
+        for t in unique_targets
+    ]
+
+    if tied:
+        within_class_cov = average(stack(cls_covs), axis=0, weights=cls_weight)
+        cls_covs = [within_class_cov for x in range(n_cls)]
+
+    cls_log_density = stack(
+        [log_normal_density(test_data, mu, c) for (mu, c) in zip(cls_means, cls_covs)]
+    )
+
+    ll_ratio = cls_log_density[1, :] - cls_log_density[0, :]
+
+    predicted = (ll_ratio > 0).astype(uint8) + 1
+    print(predicted)
+    err_rate = (predicted != test_target).sum() / test_target.size
+    print(f"{err_rate=}")
+
+
+def main():
+    mvg_binary_log_classifier(tied=True)
 
 
 if __name__ == "__main__":
