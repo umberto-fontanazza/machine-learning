@@ -1,6 +1,6 @@
 from numpy import float64, unique
 
-from .classifier import euclid_classify, euclid_threshold
+from .euclidean import euclid_classify, euclid_threshold
 from .lda import get_lda_lt
 from .pca import get_pca_lt
 from .types import F64Matrix, U8Array
