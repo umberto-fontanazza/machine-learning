@@ -4,9 +4,21 @@ from lib import load_from_csv
 from lib.model import PCA_LDA_euclid_binary
 from lib.mvg import Mvg
 from lib.normal import normal_density
+from lib.pca import get_pca_lt
 from lib.types import F64Matrix, U8Array
 from matplotlib.pyplot import hist, plot, show, title
-from numpy import array, cov, diag, exp, float64, linspace, uint8, unique
+from numpy import (
+    array,
+    array2string,
+    corrcoef,
+    cov,
+    diag,
+    exp,
+    float64,
+    linspace,
+    uint8,
+    unique,
+)
 from numpy.random import permutation, seed
 
 cls_color = ["red", "blue"]
@@ -69,22 +81,29 @@ def univariate_fit(data: F64Matrix, target: U8Array):
         show()
 
 
-def mvg_comaprison(data, target):
+def mvg_comaprison(data, target, pca_m: int | None = None):
     train_data, train_target, test_data, test_target = split_train_test(data, target)
+    if pca_m:
+        P = get_pca_lt(train_data, pca_m)
+        train_data = P.T @ train_data
+        test_data = P.T @ test_data
     mvg = Mvg(train_data, train_target)
     mvg_tied = Mvg(train_data, train_target, tied=True)
     mvg_naive = Mvg(train_data, train_target, naive=True)
     erate_mvg = mvg.inference(test_data, test_target)
     erate_mvg_tied = mvg_tied.inference(test_data, test_target)
     erate_mvg_naive = mvg_naive.inference(test_data, test_target)
-    print(f"{erate_mvg}")
-    print(f"{erate_mvg_tied}")
-    print(f"{erate_mvg_naive}")
+    print(f"Mvg:   {erate_mvg}")
+    print(f"Tied:  {erate_mvg_tied}")
+    print(f"Naive: {erate_mvg_naive}")
 
 
 def main():
     data, target = load_from_csv(Path(Path(__file__).parent, "train-data.csv"))
     target = target.astype(uint8)
+    for m in reversed(range(2, 7)):
+        print(f"{m=}")
+        mvg_comaprison(data, target, m)
 
 
 if __name__ == "__main__":
