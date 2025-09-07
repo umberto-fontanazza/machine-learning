@@ -3,6 +3,7 @@ from typing import cast
 
 from lib.mvg import Mvg
 from lib.types import F64Array, F64Matrix, U8Array
+from matplotlib.pyplot import plot, show, xlim, ylim
 from numpy import (
     array,
     astype,
@@ -10,6 +11,7 @@ from numpy import (
     exp,
     float64,
     int64,
+    linspace,
     load,
     log,
     ndarray,
@@ -74,17 +76,28 @@ def binary_cost_matrix(cost_fn: float, cost_fp: float) -> F64Matrix:
     return array([[0, cost_fn], [cost_fp, 0]])
 
 
-def bayes_risk(confusion_matrix: F64Matrix, cost: F64Matrix, prior: F64Array) -> float:
+def bayes_risk(
+    confusion_matrix: F64Matrix, cost: F64Matrix, prior_or_pi: F64Array | float
+) -> float:
     assert confusion_matrix.ndim == 2
     assert cost.ndim == 2
-    assert prior.ndim == 1
+    if isinstance(prior_or_pi, ndarray):
+        assert prior_or_pi.ndim == 1
+    elif isinstance(prior_or_pi, float):
+        assert prior_or_pi >= 0
+        assert prior_or_pi <= 1
+        prior_or_pi = array([1 - prior_or_pi, prior_or_pi], dtype=float64)
+    else:
+        raise ValueError("Something wrong with prior_or_pi")
     return (
-        (cost * confusion_matrix).sum(axis=0) / confusion_matrix.sum(axis=0) * prior
+        (cost * confusion_matrix).sum(axis=0)
+        / confusion_matrix.sum(axis=0)
+        * prior_or_pi
     ).sum()
 
 
-def dcf(conf_m: F64Matrix, cost: F64Matrix, prior: F64Array) -> float:
-    return bayes_risk(conf_m, cost, prior)
+def dcf(conf_m: F64Matrix, cost: F64Matrix, prior_or_pi: F64Array | float) -> float:
+    return bayes_risk(conf_m, cost, prior_or_pi)
 
 
 def min_dcf(
@@ -104,9 +117,7 @@ def min_dcf(
     return min_dcf
 
 
-def main():
-    cls_conditional_llr = load("data/commedia_llr_infpar.npy")
-    target = load("data/commedia_labels_infpar.npy")
+def compare_applications(cls_conditional_llr, target):
     applications = [(0.5, 1, 1), (0.8, 1, 1), (0.5, 10, 1), (0.8, 1, 10)]
     for pi, cost_fn, cost_fp in applications:
         predictions = cost_aware_classify(cls_conditional_llr, pi, cost_fn, cost_fp)
@@ -120,6 +131,65 @@ def main():
         minimum_dcf = min_dcf(cls_conditional_llr, target, pi, cost_fn, cost_fp)
         min_norm_dcf = minimum_dcf / base_risk
         print(f"{min_norm_dcf=}")
+
+
+def rate_tp_fp(confusion_m) -> tuple[float, float]:
+    """Returns (false negative rate, false positive rate)"""
+    m = confusion_m
+    assert m.ndim == 2
+    assert m.shape[0] == 2
+    assert m.shape[1] == 2
+    tn, fn, fp, tp = m[0, 0], m[0, 1], m[1, 0], m[1, 1]
+    rate_tp = tp / (tp + fn)
+    rate_fp = fp / (fp + tn)
+    return rate_tp, rate_fp
+
+
+def plot_roc(llr: F64Array, target: U8Array):
+    sorted_target = target[llr.argsort()]
+
+    rates_tp, rates_fp = [], []
+    conf_m = confusion_matrix(sorted_target, ones((llr.size), dtype=uint8)).T
+    for target in sorted_target:
+        conf_m[1, target] -= 1
+        conf_m[0, target] += 1
+        rate_tp, rate_fp = rate_tp_fp(conf_m)
+        rates_tp.append(rate_tp)
+        rates_fp.append(rate_fp)
+    plot(rates_fp, rates_tp)
+    show()
+
+
+def plot_bayes_error(
+    interval: tuple[float, float], cls_conditional_llr, target, n_points=21
+):
+    effective_prior_log_odds = linspace(-3, 3, n_points)
+    effective_priors = 1 / (1 + exp(-effective_prior_log_odds))
+
+    norm_dcf_vals = []
+    norm_min_dcf_vals = []
+    for eff_pi in effective_priors:
+        predicted = cost_aware_classify(cls_conditional_llr, eff_pi, 1, 1)
+        cost: F64Matrix = array([[0, 1], [1, 0]], dtype=float64)
+        dcf_val = dcf(confusion_matrix(target, predicted).T, cost, eff_pi)
+        min_dcf_val = min_dcf(cls_conditional_llr, target, eff_pi, 1, 1)
+        normalizer: float = min(eff_pi, 1 - eff_pi)
+        norm_dcf_vals.append(dcf_val / normalizer)
+        norm_min_dcf_vals.append(min_dcf_val / normalizer)
+    plot(effective_prior_log_odds, norm_dcf_vals, label="norm_dcf", color="r")
+    plot(effective_prior_log_odds, norm_min_dcf_vals, label="norm_min_dcf", color="b")
+    ylim([0, 1.1])
+    xlim([-3, 3])
+    show()
+
+
+def get_effective_prior(pi: float, cost_fn: float, cost_fp: float) -> float:
+    return cost_fn * pi / (cost_fn * pi + (1 - pi) * cost_fp)
+
+
+def main():
+    cls_conditional_llr = load("data/commedia_llr_infpar.npy")
+    target = load("data/commedia_labels_infpar.npy")
 
 
 if __name__ == "__main__":
