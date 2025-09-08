@@ -21,13 +21,13 @@ def dcf(conf_m: U64Matrix, cost: F64Matrix, prior: F64Array, normalized=True) ->
 
 
 def dcf_min_bin(
-    scores: F64Matrix,
+    scores: F64Array,
     target: U8Array,
     cost: F64Matrix,
     prior: F64Array,
     normalized=True,
 ) -> float:
-    conf_m = confusion_matrix(ones(target.size, dtype=uint8), target).T
+    conf_m = confusion_matrix(target, ones(target.size, dtype=uint8)).T
     dcf_min = dcf(conf_m, cost, prior, normalized)
     for t in target[scores.argsort()]:
         conf_m[1, t] -= 1

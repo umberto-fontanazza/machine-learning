@@ -1,8 +1,8 @@
-from numpy import average, cov, eye, float64, log, ones, stack, uint8, unique
-from sklearn.preprocessing import normalize
+from numpy import average, cov, eye, float64, log, stack, uint8, unique
+from scipy.special import logsumexp
 
 from .normal import log_normal_density
-from .types import F64Matrix, U8Array
+from .types import F64Array, F64Matrix, U8Array
 
 
 class Mvg:
@@ -11,6 +11,8 @@ class Mvg:
     targets: U8Array  # the integer associated with the classes, since they might not start from 0
     cls_means: list[F64Matrix]
     cls_covs: list[F64Matrix]
+    naive: bool
+    tied: bool
 
     def __init__(
         self, train_data: F64Matrix, train_target: U8Array, naive=False, tied=False
@@ -25,6 +27,7 @@ class Mvg:
             cov(train_data[:, train_target == t], bias=True, dtype=float64)
             for t in self.targets
         ]
+        self.naive, self.tied = naive, tied
 
         if tied:
             self.cls_covs = [
@@ -35,24 +38,26 @@ class Mvg:
         if naive:
             [c * eye(self.n_dim, self.n_dim) for c in self.cls_covs]
 
-    def inference(
-        self, data: F64Matrix, ground_truth: U8Array | None = None, prior="uniform"
-    ) -> U8Array | float64:
-        """Returns an array with inferred classes or the error rate if the ground_truth is provided"""
-        cls_conditional_ll = stack(
+    def _log_posterior(self, data: F64Matrix, prior: F64Array) -> F64Matrix:
+        log_cls_conditional = stack(
             [
                 log_normal_density(data, mu, c)
-                for (mu, c) in zip(self.cls_means, self.cls_covs)
+                for mu, c in zip(self.cls_means, self.cls_covs)
             ]
         )
-        ll_ratio = cls_conditional_ll[1, :] - cls_conditional_ll[0, :]
-        prior = normalize(
-            ones((self.n_cls, 1), dtype=float64), norm="l1", axis=0, copy=False
-        )
-        log_prior = log(prior)
-        threshold = log_prior[1, :] - log_prior[0, :]
-        predicted = ll_ratio > threshold
-        if ground_truth is None:
-            return predicted.astype(uint8)
-        err_rate = (predicted != ground_truth).sum() / ground_truth.size
-        return err_rate
+        log_joint = log_cls_conditional + log(prior.reshape(-1, 1))
+        return log_joint - logsumexp(log_joint, axis=0)
+
+    def score(self, data: F64Matrix, prior: F64Array) -> F64Array:
+        """Works for binary case only"""
+        assert prior.size == 2 == self.n_cls
+        log_posterior = self._log_posterior(data, prior)
+        return log_posterior[1, :] - log_posterior[0, :]
+
+    def inference(self, data: F64Matrix, prior: F64Array) -> U8Array:
+        log_posterior = self._log_posterior(data, prior)
+        return log_posterior.argmax(axis=0).astype(uint8)
+
+    @property
+    def name(self) -> str:
+        return f"Mvg {"naive " if self.naive else ""}{"tied " if self.tied else ""}"

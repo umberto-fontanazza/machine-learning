@@ -1,41 +1,18 @@
 from pathlib import Path
 
-from lib import load_from_csv
+from lib import load_from_csv, split_train_test
+from lib.application import TEST_APPLICATIONS
+from lib.binary import cost_from_fn_fp
+from lib.evaluation import dcf, dcf_min_bin
 from lib.model import PCA_LDA_euclid_binary
 from lib.mvg import Mvg
 from lib.normal import normal_density
-from lib.pca import get_pca_lt
 from lib.types import F64Matrix, U8Array
 from matplotlib.pyplot import hist, plot, show, title
-from numpy import (
-    array,
-    array2string,
-    corrcoef,
-    cov,
-    diag,
-    exp,
-    float64,
-    linspace,
-    uint8,
-    unique,
-)
-from numpy.random import permutation, seed
+from numpy import array, cov, diag, float64, linspace, uint8, unique
+from sklearn.metrics import confusion_matrix
 
 cls_color = ["red", "blue"]
-
-
-def split_train_test(
-    data: F64Matrix, target: U8Array
-) -> tuple[F64Matrix, U8Array, F64Matrix, U8Array]:
-    """Splits into train and test set with 2/3 of samples assigned to train and 1/3 to test.
-    Returns train_data, train_target, test_data, test_target."""
-    seed(0)
-    idx = permutation(data.shape[1])
-    train_count = int(data.shape[1] * 2 / 3)
-    train_idx, test_idx = idx[:train_count], idx[train_count:]
-    train_data, train_target = data[:, train_idx], target[train_idx]
-    test_data, test_target = data[:, test_idx], target[test_idx]
-    return train_data, train_target, test_data, test_target
 
 
 def test_pca_lda_euclid():
@@ -81,29 +58,28 @@ def univariate_fit(data: F64Matrix, target: U8Array):
         show()
 
 
-def mvg_comaprison(data, target, pca_m: int | None = None):
-    train_data, train_target, test_data, test_target = split_train_test(data, target)
-    if pca_m:
-        P = get_pca_lt(train_data, pca_m)
-        train_data = P.T @ train_data
-        test_data = P.T @ test_data
-    mvg = Mvg(train_data, train_target)
-    mvg_tied = Mvg(train_data, train_target, tied=True)
-    mvg_naive = Mvg(train_data, train_target, naive=True)
-    erate_mvg = mvg.inference(test_data, test_target)
-    erate_mvg_tied = mvg_tied.inference(test_data, test_target)
-    erate_mvg_naive = mvg_naive.inference(test_data, test_target)
-    print(f"Mvg:   {erate_mvg}")
-    print(f"Tied:  {erate_mvg_tied}")
-    print(f"Naive: {erate_mvg_naive}")
-
-
 def main():
     data, target = load_from_csv(Path(Path(__file__).parent, "train-data.csv"))
-    target = target.astype(uint8)
-    for m in reversed(range(2, 7)):
-        print(f"{m=}")
-        mvg_comaprison(data, target, m)
+    train_data, train_target, test_data, test_target = split_train_test(data, target)
+    for model in [
+        Mvg(train_data, train_target),
+        Mvg(train_data, train_target, tied=True),
+        Mvg(train_data, train_target, naive=True),
+    ]:
+        print(model.name)
+        for app in TEST_APPLICATIONS[0:3]:
+            eff_pi = app.effective_prior
+            prior = array([1 - eff_pi, eff_pi], dtype=float64)
+            cost = cost_from_fn_fp(1, 1)
+
+            scores = model.score(test_data, prior)
+            pred = model.inference(test_data, prior)
+            cm = confusion_matrix(test_target, pred).T
+            emp_risk = dcf(cm, cost, prior)
+            dcf_min = dcf_min_bin(scores, test_target, cost, prior)
+
+            print(f"π = {eff_pi}\t DCF: {emp_risk:.3f}\tDCFmin: {dcf_min:.3f}")
+        print()
 
 
 if __name__ == "__main__":
