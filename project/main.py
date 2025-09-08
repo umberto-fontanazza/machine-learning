@@ -7,6 +7,7 @@ from lib.evaluation import dcf, dcf_min_bin
 from lib.model import PCA_LDA_euclid_binary
 from lib.mvg import Mvg
 from lib.normal import normal_density
+from lib.plot import plot_bayes_error
 from lib.types import F64Matrix, U8Array
 from matplotlib.pyplot import hist, plot, show, title
 from numpy import array, cov, diag, float64, linspace, uint8, unique
@@ -67,6 +68,7 @@ def main():
         Mvg(train_data, train_target, naive=True),
     ]:
         print(model.name)
+        plot_bayes_error(model, test_data, test_target)
         for app in TEST_APPLICATIONS[0:3]:
             eff_pi = app.effective_prior
             prior = array([1 - eff_pi, eff_pi], dtype=float64)
