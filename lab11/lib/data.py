@@ -1,6 +1,6 @@
 from typing import cast
 
-from numpy import full, int8, ndarray, unique
+from numpy import full, int8, ndarray, unique, vstack
 from numpy.random import permutation
 from numpy.random import seed as np_seed
 from sklearn.datasets import load_iris as sklearn_load_iris
@@ -31,6 +31,11 @@ def split_train_test(
     idx = permutation(data.shape[1])
     train_idx, test_idx = idx[:train_count], idx[train_count:]
     return data[:, train_idx], target[train_idx], data[:, test_idx], target[test_idx]
+
+
+def extend_with_bias(data: F64Matrix, bias: float) -> F64Matrix:
+    """Extends data matrix by concatenating bias to each sample"""
+    return vstack((data, full((1, data.shape[1]), bias)))
 
 
 def to_signed_target(target: ndarray) -> I8Array:
