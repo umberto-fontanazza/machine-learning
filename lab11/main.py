@@ -2,10 +2,10 @@ from itertools import product
 
 from lib.data import load_iris
 from lib.evaluation import dcf, dcf_min_bin, uniform_cost
+from lib.kernels import make_poly_kernel, make_radial_kernel
 from lib.svm import Svm
 from numpy import full
 from sklearn.metrics import confusion_matrix
-from solution import train_dual_SVM_linear
 
 
 def main():
@@ -15,8 +15,17 @@ def main():
     cost = uniform_cost(n_classes)
     prior = full((n_classes), 1 / n_classes)
 
-    for K, C in product([1, 10], [0.1, 1, 10]):
-        model = Svm(train_data, train_target, C, K)
+    C = 1
+    for kern_fn, K in product(
+        [
+            make_poly_kernel(2, 0),
+            make_poly_kernel(2, 1),
+            make_radial_kernel(1),
+            make_radial_kernel(10),
+        ],
+        [0, 1],
+    ):
+        model = Svm(train_data, train_target, C, K, kernel_fn=kern_fn)
         primal, dual = model.primal_loss, model.dual_loss
         scores = model.score(test_data)
         predicted_test_target = scores > 0

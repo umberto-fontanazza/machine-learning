@@ -1,16 +1,16 @@
+from functools import cache
 from typing import Callable, cast
 
-from lib.data import extend_with_bias, to_signed_target
-from lib.types import F64Array, F64Matrix, I8Array, U8Array
-from numpy import concatenate, float64, maximum
+from lib.data import to_signed_target
+from lib.kernels import inner_product
+from lib.types import F64Array, F64Matrix, I8Array, Kernel, U8Array
+from numpy import float64, maximum
 from numpy import nan as NAN
 from numpy import sum, zeros
 from scipy.optimize import fmin_l_bfgs_b
 
 
-def _svm_primal_loss(
-    w_hat: F64Array, x_hat: F64Matrix, z: I8Array, C: float
-) -> float64:
+def _primal_loss(w_hat: F64Array, x_hat: F64Matrix, z: I8Array, C: float) -> float64:
     """
     ### Parameters
     :param w_hat: concatenation of w, b defining separation hyperplane
@@ -49,11 +49,8 @@ def _make_dual_loss_deriv(
 
 
 def train_svm(
-    x_hat: F64Matrix,
-    z: I8Array,
-    C: float,
-    K: float,
-) -> tuple[F64Array, float64, float64]:
+    xis: F64Matrix, z: I8Array, C: float, kernel_fn: Kernel
+) -> tuple[F64Array, float64, F64Matrix]:
     """
     ### Parameters
     :param x_hat: train data extended with bias
@@ -61,14 +58,14 @@ def train_svm(
 
     ### Return value
     Tuple with 3 fields
-    1 - w: hyperplane normal vec
-    2 - b: bias
-    3 - dual_loss: value of the dual loss at minimum
+    1 - alpha_otim: alphas solution of the dual objective
+    2 - dual_loss: value of the dual loss at minimum
+    3 - h_hat: z @ z.T * kern(x_hat, x_hat)
     """
-    n_samples = x_hat.shape[1]
+    n_samples = xis.shape[1]
     _z = z.reshape((-1, 1))
 
-    H_hat = _z @ _z.T * (x_hat.T @ x_hat)
+    H_hat = _z @ _z.T * kernel_fn(xis, xis)
 
     alpha_optim, minus_dual_loss, _ = fmin_l_bfgs_b(
         _make_dual_loss_deriv(H_hat),
@@ -78,17 +75,16 @@ def train_svm(
         pgtol=1e-5,
     )
 
-    w_hat = (alpha_optim * _z.T * x_hat).sum(axis=1)
-    w, b = w_hat[0:-1], w_hat[-1] * K
-    return w, b, -minus_dual_loss
+    return alpha_optim, -minus_dual_loss, H_hat
 
 
 class Svm:
+    xis: F64Matrix
+    z: I8Array
     C: float
-    K: float
-    w: F64Array
-    b: float64
-    primal_loss: float
+    kernel_fn_hat: Kernel
+    alpha_optim: F64Array
+    H_hat: F64Matrix
     dual_loss: float
 
     def __init__(
@@ -97,21 +93,28 @@ class Svm:
         train_target: U8Array,
         C: float,
         K: float = 1,
+        kernel_fn: Kernel = inner_product,
     ):
-        x_hat, z = extend_with_bias(train_data, K), to_signed_target(train_target)
-        self.C, self.K = C, K
-        self.w, self.b, dual_loss64 = train_svm(
-            x_hat,
-            z,
-            C,
-            K,
+        z = to_signed_target(train_target)
+        kernel_fn_hat = lambda xis, xjs: kernel_fn(xis, xjs) + K**2
+        self.xis = train_data
+        self.z = z
+        self.C = C
+        self.kernel_fn_hat = kernel_fn_hat
+
+        self.alpha_optim, dual_loss64, self.H_hat = train_svm(
+            train_data, z, C, kernel_fn_hat
         )
         self.dual_loss = float(dual_loss64)
-        self.primal_loss = float(_svm_primal_loss(self.w_hat, x_hat, z, C))
 
     def score(self, test_data: F64Matrix) -> F64Array:
-        return (self.w @ test_data + self.b).ravel()
+        coeffs = (self.alpha_optim * self.z).reshape((-1, 1))
+        res = (coeffs * self.kernel_fn_hat(self.xis, test_data)).sum(axis=0).ravel()
+        return res
 
     @property
-    def w_hat(self) -> F64Array:
-        return concatenate((self.w, [self.b / self.K]))
+    @cache
+    def primal_loss(self) -> float:
+        _alpha_optim, C, H_hat = self.alpha_optim.reshape((-1, 1)), self.C, self.H_hat
+        Ha = H_hat @ _alpha_optim
+        return float((_alpha_optim.T @ Ha / 2 + C * maximum(0, 1 - Ha).sum()).item())
