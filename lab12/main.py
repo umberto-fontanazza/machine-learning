@@ -20,6 +20,18 @@ def logpdf_gmm(
     return cast(F64Array, logsumexp(S, axis=0))
 
 
+def logpdf_gmm2(
+    data: F64Matrix, gmm: list[tuple[float, F64Array, F64Matrix]]
+) -> F64Array:
+    n_components = len(gmm)
+    S = []
+    weights = [w for w, _, _ in gmm]
+    for _, mean, cov in gmm:
+        S.append(mvg_log_density(data, mean, cov))
+    S = array(S).reshape((n_components, -1)) + log(weights).reshape((-1, 1))
+    return cast(F64Array, logsumexp(S, axis=0))
+
+
 def main():
     train_data_path = DATA_PATH / "GMM_data_4D.npy"
     gmm_path = DATA_PATH / "GMM_4D_3G_init.json"
