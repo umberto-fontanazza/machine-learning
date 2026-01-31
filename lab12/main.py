@@ -10,7 +10,7 @@ from scipy.special import logsumexp
 DATA_PATH = Path(__file__).parent / "data"
 
 
-def logpdf_gmm(
+def logpdf_gmm_alt(
     data: F64Matrix, means: F64Matrix, covs: list[F64Matrix], weights: F64Array
 ) -> F64Array:
 
@@ -20,7 +20,7 @@ def logpdf_gmm(
     return cast(F64Array, logsumexp(S, axis=0))
 
 
-def logpdf_gmm2(
+def logpdf_gmm(
     data: F64Matrix, gmm: list[tuple[float, F64Array, F64Matrix]]
 ) -> F64Array:
     n_components = len(gmm)
@@ -43,7 +43,7 @@ def main():
         array([m.ravel() for m in means]).T,
         list(covs),
     )
-    computed = logpdf_gmm(train_data, means, covs, weights)
+    computed = logpdf_gmm_alt(train_data, means, covs, weights)
     computed = computed.reshape((1, -1))
     save(DATA_PATH / "my_res.npy", computed)
 
