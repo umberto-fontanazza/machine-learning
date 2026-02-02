@@ -4,7 +4,7 @@ from typing import cast
 from data.GMM_load import load_gmm
 from lib.mvg import mvg_log_density
 from lib.types import F64Array, F64Matrix
-from numpy import array, average, cov, exp, load, log
+from numpy import array, average, cov, diag, exp, load, log
 from numpy.linalg import svd
 from scipy.special import logsumexp
 from solution.gmm import save_gmm
@@ -33,7 +33,9 @@ def compute_responsibilities(data: F64Matrix, gmm: list[GmmComponent]) -> F64Mat
     return exp(S - log_marginal)
 
 
-def update_gmm(data: F64Matrix, responsibilities: F64Matrix) -> list[GmmComponent]:
+def update_gmm(
+    data: F64Matrix, responsibilities: F64Matrix, min_eig: float | None
+) -> list[GmmComponent]:
     gmm = []
     tot_fr_per_component = responsibilities.sum(axis=1)
     tot_samples = data.shape[1]
@@ -49,13 +51,18 @@ def update_gmm(data: F64Matrix, responsibilities: F64Matrix) -> list[GmmComponen
             data - mean.reshape((-1, 1)), bias=True, aweights=comp_responsibilities
         )
 
-        gmm.append((weight, mean, cov_m))
+        gmm.append(
+            (weight, mean, constrain_cov_m(cov_m, min_eig) if min_eig else cov_m)
+        )
 
     return gmm
 
 
 def train_em(
-    data: F64Matrix, initialization: list[GmmComponent], stop_delta: float
+    data: F64Matrix,
+    initialization: list[GmmComponent],
+    stop_delta: float,
+    min_eig: float | None,
 ) -> list[GmmComponent]:
     gmm = initialization
     ll_average = None
@@ -65,12 +72,12 @@ def train_em(
             break
         ll_average = new_ll_avg
         responsibilities = compute_responsibilities(data, gmm)
-        gmm = update_gmm(data, responsibilities)
+        gmm = update_gmm(data, responsibilities, min_eig)
     return gmm
 
 
 def compute_displacement_vector(cov_m: F64Matrix, alpha: float) -> F64Array:
-    U, s, Vh = svd(cov_m)
+    U, s, _ = svd(cov_m)
     return (U[:, 0:1] * s[0] ** 0.5 * alpha).ravel()
 
 
@@ -83,14 +90,31 @@ def train_lbg(gmm: list[GmmComponent], alpha: float) -> list[GmmComponent]:
     return splitted
 
 
+from numpy.linalg import svd
+
+
+def constrain_cov_m(cov_m: F64Matrix, min_eig: float) -> F64Matrix:
+    u, c, _ = svd(cov_m)
+    c[c < min_eig] = min_eig
+    assert c.ndim == 1
+    return u @ diag(c) @ u.T
+
+
 def train_gmm(
-    data: F64Matrix, alpha: float, stop_delta: float, target_components: int
+    data: F64Matrix,
+    alpha: float,
+    stop_delta: float,
+    target_components: int,
+    min_eig: float | None = None,
 ) -> list[GmmComponent]:
-    gmm = cast(list[GmmComponent], [(1, data.mean(axis=1), cov(data, bias=True))])
+    cov_m = cast(F64Matrix, cov(data, bias=True))
+    if min_eig:
+        cov_m = constrain_cov_m(cov_m, min_eig)
+    gmm = cast(list[GmmComponent], [(1, data.mean(axis=1), cov_m)])
     # assert target_components is a power of 2
     while len(gmm) < target_components:
         gmm = train_lbg(gmm, alpha)
-        gmm = train_em(data, gmm, stop_delta)
+        gmm = train_em(data, gmm, stop_delta, min_eig)
     return gmm
 
 
