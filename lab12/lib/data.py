@@ -16,7 +16,6 @@ def load_iris(binary=False) -> tuple[F64Matrix, U8Array, F64Matrix, U8Array]:
     if binary:
         data = data[:, target != 0]
         target = target[target != 0]
-    target[target == 2] = 0  # WARNING: this may be a source of errors
     return split_train_test(data, target)
 
 
