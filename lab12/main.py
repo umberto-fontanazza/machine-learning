@@ -4,7 +4,7 @@ from typing import cast
 from data.GMM_load import load_gmm
 from lib.mvg import mvg_log_density
 from lib.types import F64Array, F64Matrix
-from numpy import array, average, cov, diag, exp, load, log
+from numpy import array, average, cov, diag, exp, eye, load, log, zeros
 from numpy.linalg import svd
 from scipy.special import logsumexp
 from solution.gmm import save_gmm
@@ -34,7 +34,11 @@ def compute_responsibilities(data: F64Matrix, gmm: list[GmmComponent]) -> F64Mat
 
 
 def update_gmm(
-    data: F64Matrix, responsibilities: F64Matrix, min_eig: float | None
+    data: F64Matrix,
+    responsibilities: F64Matrix,
+    min_eig: float | None,
+    diag: bool,
+    tied: bool,
 ) -> list[GmmComponent]:
     gmm = []
     tot_fr_per_component = responsibilities.sum(axis=1)
@@ -51,9 +55,19 @@ def update_gmm(
             data - mean.reshape((-1, 1)), bias=True, aweights=comp_responsibilities
         )
 
-        gmm.append(
-            (weight, mean, constrain_cov_m(cov_m, min_eig) if min_eig else cov_m)
-        )
+        gmm.append((weight, mean, cov_m))
+
+    if tied:
+        cov_m = zeros((data.shape[0], data.shape[0]))
+        for weight, _, c in gmm:
+            cov_m += weight * c
+        gmm = [(w, m, cov_m) for w, m, _ in gmm]
+
+    if diag:
+        gmm = [(w, m, c * eye(c.shape[0], c.shape[1])) for w, m, c in gmm]
+
+    if min_eig is not None:
+        gmm = [(w, m, constrain_cov_m(c, min_eig)) for w, m, c in gmm]
 
     return gmm
 
@@ -63,6 +77,8 @@ def train_em(
     initialization: list[GmmComponent],
     stop_delta: float,
     min_eig: float | None,
+    diag: bool,
+    tied: bool,
 ) -> list[GmmComponent]:
     gmm = initialization
     ll_average = None
@@ -72,7 +88,7 @@ def train_em(
             break
         ll_average = new_ll_avg
         responsibilities = compute_responsibilities(data, gmm)
-        gmm = update_gmm(data, responsibilities, min_eig)
+        gmm = update_gmm(data, responsibilities, min_eig, diag, tied)
     return gmm
 
 
@@ -106,6 +122,8 @@ def train_gmm(
     stop_delta: float,
     target_components: int,
     min_eig: float | None = None,
+    diag: bool = False,
+    tied: bool = False,
 ) -> list[GmmComponent]:
     cov_m = cast(F64Matrix, cov(data, bias=True))
     if min_eig:
@@ -114,7 +132,7 @@ def train_gmm(
     # assert target_components is a power of 2
     while len(gmm) < target_components:
         gmm = train_lbg(gmm, alpha)
-        gmm = train_em(data, gmm, stop_delta, min_eig)
+        gmm = train_em(data, gmm, stop_delta, min_eig, diag, tied)
     return gmm
 
 
