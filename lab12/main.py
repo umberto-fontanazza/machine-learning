@@ -3,9 +3,11 @@ from typing import cast
 
 from data.GMM_load import load_gmm
 from lib.mvg import mvg_log_density
-from lib.types import F64Array, F64Matrix, F64Tensor3D
-from numpy import array, average, exp, load, log, save
+from lib.types import F64Array, F64Matrix
+from numpy import array, average, cov, exp, load, log
+from numpy.linalg import svd
 from scipy.special import logsumexp
+from solution.gmm import save_gmm
 
 DATA_PATH = Path(__file__).parent / "data"
 
@@ -43,23 +45,22 @@ def update_gmm(data: F64Matrix, responsibilities: F64Matrix) -> list[GmmComponen
         comp_responsibilities = responsibilities[component, :].ravel()
         mean = average(data, weights=comp_responsibilities, axis=1).ravel()
 
-        cov_m = comp_responsibilities * data @ data.T / tot_fr - mean.reshape(
-            (-1, 1)
-        ) @ mean.reshape((1, -1))
+        cov_m = cov(
+            data - mean.reshape((-1, 1)), bias=True, aweights=comp_responsibilities
+        )
 
         gmm.append((weight, mean, cov_m))
 
     return gmm
 
 
-def train(
+def train_em(
     data: F64Matrix, initialization: list[GmmComponent], stop_delta: float
 ) -> list[GmmComponent]:
     gmm = initialization
     ll_average = None
     while True:
         new_ll_avg = float(average(logpdf_gmm(data, gmm)))
-        print(new_ll_avg)
         if ll_average is not None and new_ll_avg - ll_average < stop_delta:
             break
         ll_average = new_ll_avg
@@ -68,13 +69,42 @@ def train(
     return gmm
 
 
+def compute_displacement_vector(cov_m: F64Matrix, alpha: float) -> F64Array:
+    U, s, Vh = svd(cov_m)
+    return (U[:, 0:1] * s[0] ** 0.5 * alpha).ravel()
+
+
+def train_lbg(gmm: list[GmmComponent], alpha: float) -> list[GmmComponent]:
+    splitted = []
+    for weight, mean, cov_m in gmm:
+        d = compute_displacement_vector(cov_m, alpha)
+        splitted.append((weight / 2, mean - d, cov_m))
+        splitted.append((weight / 2, mean + d, cov_m))
+    return splitted
+
+
+def train_gmm(
+    data: F64Matrix, alpha: float, stop_delta: float, target_components: int
+) -> list[GmmComponent]:
+    gmm = cast(list[GmmComponent], [(1, data.mean(axis=1), cov(data, bias=True))])
+    # assert target_components is a power of 2
+    while len(gmm) < target_components:
+        gmm = train_lbg(gmm, alpha)
+        gmm = train_em(data, gmm, stop_delta)
+    return gmm
+
+
 def main():
     train_data_path = DATA_PATH / "GMM_data_4D.npy"
-    gmm_path = DATA_PATH / "GMM_4D_3G_init.json"
     train_data = load(train_data_path)
-    gmm = load_gmm(gmm_path)
-
-    train(train_data, gmm, 1e-6)
+    # gmm_path = DATA_PATH / "GMM_4D_3G_init.json"
+    # gmm_path = DATA_PATH / "GMM_4D_4G_EM_LBG.json"
+    # gmm = load_gmm(gmm_path)
+    stop_delta = 1e-6
+    alpha = 0.1
+    target_components = 4
+    my_gmm = train_gmm(train_data, alpha, stop_delta, target_components)
+    save_gmm(my_gmm, DATA_PATH / "my_gmm.json")
 
 
 if __name__ == "__main__":
