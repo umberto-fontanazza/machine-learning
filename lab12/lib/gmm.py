@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import cast
 
 from lib.mvg import mvg_log_density
@@ -5,6 +6,12 @@ from lib.types import F64Array, F64Matrix, GmmComponent
 from numpy import array, average, cov, diag, exp, eye, log, zeros
 from numpy.linalg import svd
 from scipy.special import logsumexp
+
+
+class CovarianceType(Enum):
+    FULL = (1,)
+    DIAG = (2,)
+    TIED = 3
 
 
 def compute_log_joint(data: F64Matrix, gmm: list[GmmComponent]) -> F64Matrix:
@@ -30,8 +37,7 @@ def update_gmm(
     data: F64Matrix,
     responsibilities: F64Matrix,
     min_eig: float | None,
-    diag: bool,
-    tied: bool,
+    cov_type: CovarianceType,
 ) -> list[GmmComponent]:
     gmm = []
     tot_fr_per_component = responsibilities.sum(axis=1)
@@ -50,13 +56,12 @@ def update_gmm(
 
         gmm.append((weight, mean, cov_m))
 
-    if tied:
+    if cov_type == CovarianceType.TIED:
         cov_m = zeros((data.shape[0], data.shape[0]))
         for weight, _, c in gmm:
             cov_m += weight * c
         gmm = [(w, m, cov_m) for w, m, _ in gmm]
-
-    if diag:
+    elif cov_type == CovarianceType.DIAG:
         gmm = [(w, m, c * eye(c.shape[0], c.shape[1])) for w, m, c in gmm]
 
     if min_eig is not None:
@@ -69,9 +74,8 @@ def train_em(
     data: F64Matrix,
     initialization: list[GmmComponent],
     stop_delta: float,
+    cov_type: CovarianceType,
     min_eig: float | None,
-    diag: bool,
-    tied: bool,
 ) -> list[GmmComponent]:
     gmm = initialization
     ll_average = None
@@ -81,7 +85,7 @@ def train_em(
             break
         ll_average = new_ll_avg
         responsibilities = compute_responsibilities(data, gmm)
-        gmm = update_gmm(data, responsibilities, min_eig, diag, tied)
+        gmm = update_gmm(data, responsibilities, min_eig, cov_type)
     return gmm
 
 
@@ -111,16 +115,16 @@ def train_gmm(
     alpha: float,
     stop_delta: float,
     target_components: int,
+    cov_type: CovarianceType = CovarianceType.FULL,
     min_eig: float | None = None,
-    diag: bool = False,
-    tied: bool = False,
 ) -> list[GmmComponent]:
     cov_m = cast(F64Matrix, cov(data, bias=True))
-    if min_eig:
+    if cov_type == CovarianceType.DIAG:
+        cov_m *= eye(cov_m.shape[0], cov_m.shape[1])
+    if min_eig is not None:
         cov_m = constrain_cov_m(cov_m, min_eig)
     gmm = cast(list[GmmComponent], [(1, data.mean(axis=1), cov_m)])
-    # assert target_components is a power of 2
     while len(gmm) < target_components:
         gmm = train_lbg(gmm, alpha)
-        gmm = train_em(data, gmm, stop_delta, min_eig, diag, tied)
+        gmm = train_em(data, gmm, stop_delta, cov_type, min_eig)
     return gmm
