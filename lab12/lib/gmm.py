@@ -2,8 +2,8 @@ from enum import Enum
 from typing import cast
 
 from lib.mvg import mvg_log_density
-from lib.types import F64Array, F64Matrix, GmmComponent
-from numpy import array, average, cov, diag, exp, eye, log, zeros
+from lib.types import F64Array, F64Matrix, Gmm, GmmComponent, U8Array
+from numpy import array, average, cov, diag, exp, eye, log, unique, vstack, zeros
 from numpy.linalg import svd
 from scipy.special import logsumexp
 
@@ -14,7 +14,36 @@ class CovarianceType(Enum):
     TIED = 3
 
 
-def compute_log_joint(data: F64Matrix, gmm: list[GmmComponent]) -> F64Matrix:
+class GmmClassifier:
+    cls_gmms: list[Gmm]
+
+    def __init__(
+        self,
+        train_data: F64Matrix,
+        train_target: U8Array,
+        alpha: float,
+        stop_delta: float,
+        target_components: int,
+        cov_type: CovarianceType = CovarianceType.FULL,
+        min_eig: float | None = None,
+    ):
+        self.cls_gmms = [
+            train_gmm(
+                train_data[:, train_target == target],
+                alpha,
+                stop_delta,
+                target_components,
+                cov_type,
+                min_eig,
+            )
+            for target in unique(train_target)
+        ]
+
+    def class_cond_logpdf(self, data: F64Matrix) -> F64Matrix:
+        return vstack([logpdf_gmm(data, gmm) for gmm in self.cls_gmms])
+
+
+def compute_log_joint(data: F64Matrix, gmm: Gmm) -> F64Matrix:
     n_components = len(gmm)
     S = []
     weights = [w for w, _, _ in gmm]
@@ -23,7 +52,7 @@ def compute_log_joint(data: F64Matrix, gmm: list[GmmComponent]) -> F64Matrix:
     return array(S).reshape((n_components, -1)) + log(weights).reshape((-1, 1))
 
 
-def logpdf_gmm(data: F64Matrix, gmm: list[GmmComponent]) -> F64Array:
+def logpdf_gmm(data: F64Matrix, gmm: Gmm) -> F64Array:
     return cast(F64Array, logsumexp(compute_log_joint(data, gmm), axis=0))
 
 
@@ -115,8 +144,8 @@ def train_gmm(
     alpha: float,
     stop_delta: float,
     target_components: int,
-    cov_type: CovarianceType = CovarianceType.FULL,
-    min_eig: float | None = None,
+    cov_type: CovarianceType,
+    min_eig: float | None,
 ) -> list[GmmComponent]:
     cov_m = cast(F64Matrix, cov(data, bias=True))
     if cov_type == CovarianceType.DIAG:

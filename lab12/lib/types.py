@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Sequence
 
 from numpy import bool, dtype, float64, int8, ndarray, uint8, uint64
 
@@ -11,3 +11,4 @@ type I8Array = ndarray[tuple[int], dtype[int8]]
 type Kernel = Callable[[F64Matrix, F64Matrix], F64Matrix]
 type F64Tensor3D = ndarray[tuple[int, int, int], dtype[float64]]
 type GmmComponent = tuple[float, F64Array, F64Matrix]
+type Gmm = Sequence[GmmComponent]
