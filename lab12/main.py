@@ -2,8 +2,8 @@ from pathlib import Path
 
 from lib.data import load_iris, split_train_test
 from lib.evaluation import dcf, dcf_min_bin
-from lib.gmm import CovarianceType, GmmClassifier
-from numpy import array, exp, load, uint8
+from lib.gmm import CovarianceType, GmmClassifier, save_gmm
+from numpy import array, exp, load, save, uint8
 from sklearn.metrics import confusion_matrix
 
 DATA_PATH = Path(__file__).parent / "data"
@@ -36,8 +36,7 @@ def main():
             cost = array([[0, 1], [1, 0]])
             prior = array([0.5, 0.5])
             pred = (llr > 0).astype(uint8)
-            conf_m = confusion_matrix(pred, test_target).T
-
+            conf_m = confusion_matrix(test_target, pred).T
             _dcf = dcf(conf_m, cost, prior)
             dcf_min = dcf_min_bin(llr, test_target, cost, prior)
             print(f"{dcf_min:.4f} / {_dcf:.4f}")
