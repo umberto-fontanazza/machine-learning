@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from lib.data import load_iris, split_train_test
+from lib.data import split_train_test
 from lib.evaluation import dcf, dcf_min_bin
-from lib.gmm import CovarianceType, GmmClassifier, save_gmm
-from numpy import array, exp, load, save, uint8
+from lib.gmm import CovarianceType, GmmClassifier
+from numpy import array, exp, load, uint8
 from sklearn.metrics import confusion_matrix
 
 DATA_PATH = Path(__file__).parent / "data"
