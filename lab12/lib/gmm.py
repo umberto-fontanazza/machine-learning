@@ -1,9 +1,22 @@
 from enum import Enum
+from json import dump, load
 from typing import cast
 
 from lib.mvg import mvg_log_density
 from lib.types import F64Array, F64Matrix, Gmm, GmmComponent, U8Array
-from numpy import array, average, cov, diag, exp, eye, log, unique, vstack, zeros
+from numpy import (
+    array,
+    asarray,
+    average,
+    cov,
+    diag,
+    exp,
+    eye,
+    log,
+    unique,
+    vstack,
+    zeros,
+)
 from numpy.linalg import svd
 from scipy.special import logsumexp
 
@@ -110,7 +123,7 @@ def train_em(
     ll_average = None
     while True:
         new_ll_avg = float(average(logpdf_gmm(data, gmm)))
-        if ll_average is not None and new_ll_avg - ll_average < stop_delta:
+        if ll_average is not None and new_ll_avg - ll_average <= stop_delta:
             break
         ll_average = new_ll_avg
         responsibilities = compute_responsibilities(data, gmm)
@@ -157,3 +170,15 @@ def train_gmm(
         gmm = train_lbg(gmm, alpha)
         gmm = train_em(data, gmm, stop_delta, cov_type, min_eig)
     return gmm
+
+
+def save_gmm(gmm: Gmm, filename):
+    gmmJson = [(i, j.tolist(), k.tolist()) for i, j, k in gmm]
+    with open(filename, "w") as f:
+        dump(gmmJson, f)
+
+
+def load_gmm(filename):
+    with open(filename, "r") as f:
+        gmm = load(f)
+    return [(i, asarray(j), asarray(k)) for i, j, k in gmm]
