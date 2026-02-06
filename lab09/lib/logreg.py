@@ -19,10 +19,11 @@ def make_logreg_obj(
         assert model_params.size == data.shape[0] + 1
         w, b = model_params[0:-1], model_params[-1]
         assert w.size == data.shape[0]
-        scores = w @ data + b
+        scores = (w.reshape((-1, 1)).T @ data).ravel() + b
         assert scores.size == data.shape[1]
         assert scores.ndim == 1
-        neg_zs = -z * scores
+        zs = z * scores
+        neg_zs = -zs
 
         w_col = w.reshape((-1, 1))
         norm_w_squared = w_col.T @ w_col
@@ -30,7 +31,7 @@ def make_logreg_obj(
         logistic_loss = logaddexp(0, neg_zs)
         f_val = float(regularizer + average(logistic_loss))
 
-        G = -z / (1 + exp(neg_zs))
+        G = -z / (1 + exp(zs))
         grad_w = regularization_coeff * w + average(G * data, axis=1)
         deriv_b = average(G)
 
