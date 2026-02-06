@@ -19,7 +19,7 @@ def make_logreg_obj(
         assert model_params.size == data.shape[0] + 1
         w, b = model_params[0:-1], model_params[-1]
         assert w.size == data.shape[0]
-        scores = (w.reshape((-1, 1)).T @ data).ravel() + b
+        scores = w @ data + b
         assert scores.size == data.shape[1]
         assert scores.ndim == 1
         zs = z * scores
