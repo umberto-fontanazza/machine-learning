@@ -1,6 +1,6 @@
-from typing import Callable, cast
+from typing import Callable
 
-from lib.data import extend_with_bias, to_signed_target
+from lib.data import to_signed_target
 from lib.types import F64Array, F64Matrix, U8Array
 from numpy import append, average, exp, float64, log, logaddexp, zeros
 from scipy.optimize import fmin_l_bfgs_b
@@ -11,17 +11,9 @@ def make_logreg_obj(
 ) -> Callable[[F64Array], tuple[float, F64Array]]:
     z = to_signed_target(target)
 
-    assert data.shape[0] == 4
-    assert data.shape[1] == target.size
-    assert target.ndim == 1
-
     def logreg_obj(model_params: F64Array) -> tuple[float, F64Array]:
-        assert model_params.size == data.shape[0] + 1
         w, b = model_params[0:-1], model_params[-1]
-        assert w.size == data.shape[0]
         scores = w @ data + b
-        assert scores.size == data.shape[1]
-        assert scores.ndim == 1
         zs = z * scores
         neg_zs = -zs
 
