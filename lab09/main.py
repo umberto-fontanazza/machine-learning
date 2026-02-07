@@ -8,15 +8,15 @@ from sklearn.metrics import confusion_matrix
 def main():
     train_data, train_target, test_data, test_target = load_iris(binary=True)
     for reg_coeff in [1e-3, 1e-1, 1]:
-        model = LogregBin(train_data, train_target, reg_coeff)
-        llr = model.llr(test_data)
-        predicted = (llr > 0).astype(uint8)
+        model = LogregBin(train_data, train_target, reg_coeff, target_prior=0.8)
+        scores = model.scores(test_data)
+        predicted = (scores > 0).astype(uint8)
 
         conf_m = confusion_matrix(test_target, predicted).T
         cost = array([[0, 1], [1, 0]])
-        prior = array([0.5, 0.5])
+        prior = array([0.2, 0.8])
         dcf_act = dcf(conf_m, cost, prior)
-        dcf_min = dcf_min_bin(llr, test_target, cost, prior)
+        dcf_min = dcf_min_bin(scores, test_target, cost, prior)
         err_rate = (predicted != test_target).sum() / test_target.size * 100
 
         print(
