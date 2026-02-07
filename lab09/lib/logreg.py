@@ -2,7 +2,7 @@ from typing import Callable, cast
 
 from lib.data import extend_with_bias, to_signed_target
 from lib.types import F64Array, F64Matrix, U8Array
-from numpy import append, average, exp, float64, logaddexp, zeros
+from numpy import append, average, exp, float64, log, logaddexp, zeros
 from scipy.optimize import fmin_l_bfgs_b
 
 
@@ -40,16 +40,22 @@ def make_logreg_obj(
     return logreg_obj
 
 
-class Logreg:
+class LogregBin:
     w: F64Array
     b: float64
     obj_val: float
+    prior: float
 
     def __init__(self, data: F64Matrix, target: U8Array, reg_coeff: float):
         obj_fn = make_logreg_obj(data, target, reg_coeff)
         optim, obj_val, _ = fmin_l_bfgs_b(obj_fn, zeros((data.shape[0] + 1)))
         self.w, self.b = optim[:-1], optim[-1]
         self.obj_val = obj_val
+        self.prior = (target > 0).sum() / target.size
 
-    def score(self, data: F64Matrix) -> F64Array:
+    def scores(self, data: F64Matrix) -> F64Array:
+        """Scores reflect training set prior"""
         return self.w @ data + self.b
+
+    def llr(self, data: F64Matrix) -> F64Array:
+        return self.scores(data) - log(self.prior / (1 - self.prior))
